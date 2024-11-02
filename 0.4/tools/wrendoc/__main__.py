@@ -154,16 +154,17 @@ def makeMarkdownFile(comments, file):
 		line = line.strip()
 
 		# Headers
-		#classKeyword = ":: proc"
 
-		# if line.startswith(f"{classKeyword} "):
-		#   title = f"{classKeyword.title()}" + line[len(classKeyword):]
-		#   markdown += f"\n---\n## {getHref(title, llineno, url)}\n"
-		#   apiHeaderPresent = False
-		# else:
-		if not apiHeaderPresent:
-			markdown += "\n## API\n"
-			apiHeaderPresent = True
+		classKeyword = "package"
+
+		if line.startswith(f"{classKeyword} "):
+		  title = f"{classKeyword.title()}" + line[len(classKeyword):]
+		  markdown += f"\n---\n## {getHref(title, llineno, url)}\n"
+		  apiHeaderPresent = False
+		else:
+			if not apiHeaderPresent:
+				markdown += "\n## API\n"
+				apiHeaderPresent = True
 
 		markdown += f"\n### {getHref(line, llineno, url)}\n"
 

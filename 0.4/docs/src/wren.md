@@ -1,7 +1,7 @@
 <!-- file: wren.odin -->
 <!-- documentation automatically generated using domepunk/tools/doc -->
 
-## Wren API Bindings
+# Wren API Bindings
 
 Wren is a small, fast, class-based concurrent scripting language
 
