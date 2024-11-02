@@ -1,7 +1,0 @@
-#!/usr/bin/env sh
-
-# Check the code inside 0.4
-VERSION=${GIT_DIR}../0.4
-
-# Formats odin code and lint before every commit
-odin strip-semicolon ${VERSION} && odin check ${VERSION}

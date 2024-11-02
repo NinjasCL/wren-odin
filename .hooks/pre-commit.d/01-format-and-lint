@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+
+DIRECTORY="."
+
+# Formats odin code and lint before every commit
+odin strip-semicolon ${DIRECTORY} && odin check ${DIRECTORY}

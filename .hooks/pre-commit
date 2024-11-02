@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
-HOOKS=${GIT_DIR}/hooks
+HOOKS=.git/hooks
 PRE_COMMIT=${HOOKS}/pre-commit.d
 
 # List all pre-commit hooks
-${PRE_COMMIT}/01-check-wren-0.4
+${PRE_COMMIT}/01-format-and-lint

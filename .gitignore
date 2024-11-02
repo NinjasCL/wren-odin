@@ -1,2 +1,8 @@
-tests.bin
+*.bin
+*.exe
+*.o
+example
 .DS_Store
+wren/
+wren.zip
+odin-doc

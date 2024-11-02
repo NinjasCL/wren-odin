@@ -1,12 +1,11 @@
-= Wren in Odin
+# Wren in Odin
 
 Wren is a small, fast, class-based concurrent scripting language
 
 Think Smalltalk in a Lua-sized package with a dash of Erlang and wrapped up in
 a familiar, modern syntax.
 
-[source, js]
-----
+```js
 System.print("Hello, world!")
 
 class Wren {
@@ -20,7 +19,7 @@ var adjectives = Fiber.new {
 }
 
 while (!adjectives.isDone) System.print(adjectives.call())
-----
+```
 
  - **Wren is small.** The VM implementation is under 4,000 semicolons.
     You can skim the whole thing in an afternoon. It's *small*, but not
@@ -43,17 +42,17 @@ while (!adjectives.isDone) System.print(adjectives.call())
     and an easy-to-use C API. It compiles cleanly as C99, C++98
     or anything later.
 
-== Links
+## Links
 
 - Syntax: http://wren.io/syntax.html
 - Github: https://github.com/wren-lang/wren/tree/main/src
 - Getting Started: http://wren.io/getting-started.html
 
-== Usage
+## Usage
 
+See more complete examples at `example.odin` and `tests/wren_tests.odin`
 
-[source, odin]
-----
+```odin
 package main
 
 import "core:fmt"
@@ -79,4 +78,4 @@ main :: proc() {
             fmt.println("Success!")
     }
 }
-----
+```

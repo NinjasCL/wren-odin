@@ -13,8 +13,8 @@ download d:
 	rm wren.zip
 	mv wren-0.4.0 wren
 
-docs:
 # python3 -m pip install markdown
+docs:
 	cd wren && python3 util/generate_docs.py
 
 build.header bh:
@@ -40,6 +40,7 @@ build.linux bl:
 	mv wren/lib/libwren.a linux/wren.a
 	mv wren/lib/libwren.so linux/wren.so
 
+# This is best with a Github action
 build.windows bw:
 	echo "TODO"
 
