@@ -26,8 +26,37 @@ var adjectives = Fiber.new {
 while (!adjectives.isDone) System.print(adjectives.call())
 ```
 
-- Since: 1.0.0
+## Usage
 
+See more complete examples at `example.odin` and `tests/wren_tests.odin`
+
+```go
+package main
+
+import "core:fmt"
+
+import wren "../vendor/wren/0.4"
+
+main :: proc() {
+    config := wren.Configuration{}
+    wren.InitConfiguration(&config)
+
+    vm := wren.NewVM(&config)
+
+    module : cstring = "main"
+    script : cstring = `System.print("Hello Wren from Odin!")`
+    result := wren.Interpret(vm, module, script)
+
+    switch result {
+        case .WREN_RESULT_COMPILE_ERROR:
+            fmt.println("Compile error")
+        case .WREN_RESULT_RUNTIME_ERROR:
+            fmt.println("Runtime error")
+        case .WREN_RESULT_SUCCESS:
+            fmt.println("Success!")
+    }
+}
+```
 */
 
 import _c "core:c"
@@ -56,19 +85,94 @@ SIGNATURE :: "\x1bWren"
 
 // Inspired by https://github.com/lumi-c/odin-wren
 
+/**
+A generic allocation function that handles all explicit memory management
+used by Wren. It's used like so:
+
+- To allocate new memory, [memory] is NULL and [newSize] is the desired
+  size. It should return the allocated memory or NULL on failure.
+
+- To attempt to grow an existing allocation, [memory] is the memory, and
+  [newSize] is the desired size. It should return [memory] if it was able to
+  grow it in place, or a new pointer if it had to move it.
+
+- To shrink memory, [memory] and [newSize] are the same as above but it will
+  always return [memory].
+
+- To free memory, [memory] will be the memory to free and [newSize] will be
+  zero. It should return NULL.
+*/
 ReallocateFn :: #type proc "c" (memory: rawptr, newSize: u64, userData: rawptr) -> rawptr
 
+/**
+A function callable from Wren code, but implemented in C.
+*/
 ForeignMethodFn :: #type proc "c" (vm: ^VM)
+
+/**
+A finalizer function for freeing resources owned by an instance of a foreign
+class. Unlike most foreign methods, finalizers do not have access to the VM
+and should not interact with it since it's in the middle of a garbage
+collection.
+*/
 FinalizerFn :: #type proc "c" (data: rawptr)
+
+/**
+Gives the host a chance to canonicalize the imported module name,
+potentially taking into account the (previously resolved) name of the module
+that contains the import. Typically, this is used to implement relative
+imports.
+*/
 ResolveModuleFn :: #type proc "c" (vm: ^VM, importer: cstring, name: cstring) -> cstring
+
+/**
+Called after loadModuleFn is called for module [name]. The original returned result
+is handed back to you in this callback, so that you can free memory if appropriate.
+*/
 LoadModuleCompleteFn :: #type proc "c" (vm: ^VM, name: cstring, result: LoadModuleResult)
+
+/**
+Loads and returns the source code for the module [name].
+*/
 LoadModuleFn :: #type proc "c" (vm: ^VM, name: cstring) -> LoadModuleResult
+
+/**
+Returns a pointer to a foreign method on [className] in [module] with
+[signature].
+*/
 BindForeignMethodFn :: #type proc "c" (vm: ^VM, module: cstring, className: cstring, isStatic: bool, signature: cstring) -> ForeignMethodFn
+
+/**
+Displays a string of text to the user.
+*/
 WriteFn :: #type proc "c" (vm: ^VM, message: cstring)
+
 ErrorType :: ErrorTypeEnum
+
+/**
+Reports an error to the user.
+
+An error detected during compile time is reported by calling this once with
+[type] `WREN_ERROR_COMPILE`, the resolved name of the [module] and [line]
+where the error occurs, and the compiler's error [message].
+
+A runtime error is reported by calling this once with [type]
+`WREN_ERROR_RUNTIME`, no [module] or [line], and the runtime error's
+[message]. After that, a series of [type] `WREN_ERROR_STACK_TRACE` calls are
+made for each line in the stack trace. Each of those has the resolved
+[module] and [line] where the method or function is defined and [message] is
+the name of the method or function.
+*/
 ErrorFn :: #type proc "c" (vm: ^VM, type: ErrorType, module: cstring, line: _c.int, message: cstring)
+
 ForeignClassMethods :: ForeignClassMethodsStruct
+
+/**
+Returns a pair of pointers to the foreign methods used to allocate and
+finalize the data for instances of [className] in resolved [module].
+*/
 BindForeignClassFn :: #type proc "c" (vm: ^VM, module: cstring, className: cstring) -> ForeignClassMethods
+
 Configuration :: ConfigurationStruct
 InterpretResult :: InterpretResultEnum
 Type :: WrenTypeEnum
@@ -136,56 +240,79 @@ Main container for the Wren API.
 foreign wren {
 
     @(link_name="wrenInitConfiguration")
+		/**
+		Initializes [configuration] with all of its default values.
+		Call this before setting the particular fields you care about.
+		*/
     InitConfiguration :: proc(configuration : ^Configuration) ---
 
     @(link_name="wrenNewVM")
+		/**
+		Creates a new Wren virtual machine using the given [configuration]. Wren
+		will copy the configuration data, so the argument passed to this can be
+		freed after calling this. If [configuration] is `NULL`, uses a default
+		configuration.
+		*/
     NewVM :: proc(configuration : ^Configuration) -> ^VM ---
 
     @(link_name="wrenFreeVM")
+		/**
+		Disposes of all resources is use by [vm], which was previously created by a
+		call to [wrenNewVM].
+		*/
     FreeVM :: proc(vm : ^VM) ---
 
     @(link_name="wrenCollectGarbage")
+		/**
+		Immediately run the garbage collector to free unused memory.
+		*/
     CollectGarbage :: proc(vm : ^VM) ---
 
     @(link_name="wrenInterpret")
-    Interpret :: proc(
-        vm : ^VM,
-        module : cstring,
-        source : cstring,
-    ) -> InterpretResult ---
+		/**
+		Runs [source], a string of Wren source code in a new fiber in [vm] in the
+		context of resolved [module].
+		*/
+    Interpret :: proc(vm : ^VM, module : cstring, source : cstring) -> InterpretResult ---
 
     @(link_name="wrenMakeCallHandle")
-    MakeCallHandle :: proc(
-        vm : ^VM,
-        signature : cstring,
-    ) -> ^Handle ---
+		/**
+		Creates a handle that can be used to invoke a method with [signature] on
+		using a receiver and arguments that are set up on the stack.
+
+		This handle can be used repeatedly to directly invoke that method from C
+		code using [wrenCall].
+
+		When you are done with this handle, it must be released using
+		[wrenReleaseHandle].
+		*/
+    MakeCallHandle :: proc(vm : ^VM, signature : cstring) -> ^Handle ---
 
     @(link_name="wrenCall")
-    Call :: proc(
-        vm : ^VM,
-        method : ^Handle,
-    ) -> InterpretResult ---
+		/**
+		Calls [method], using the receiver and arguments previously set up on the stack.
+
+		[method] must have been created by a call to [wrenMakeCallHandle]. The
+		arguments to the method must be already on the stack. The receiver should be
+		in slot 0 with the remaining arguments following it, in order. It is an
+		error if the number of arguments provided does not match the method's
+		signature.
+
+		After this returns, you can access the return value from slot 0 on the stack.
+		*/
+    Call :: proc(vm : ^VM, method : ^Handle) -> InterpretResult ---
 
     @(link_name="wrenReleaseHandle")
-    ReleaseHandle :: proc(
-        vm : ^VM,
-        handle : ^Handle,
-    ) ---
+    ReleaseHandle :: proc(vm : ^VM, handle : ^Handle) ---
 
     @(link_name="wrenGetSlotCount")
     GetSlotCount :: proc(vm : ^VM) -> _c.int ---
 
     @(link_name="wrenEnsureSlots")
-    EnsureSlots :: proc(
-        vm : ^VM,
-        numSlots : _c.int,
-    ) ---
+    EnsureSlots :: proc(vm : ^VM, numSlots : _c.int) ---
 
     @(link_name="wrenGetSlotType")
-    GetSlotType :: proc(
-        vm : ^VM,
-        slot : _c.int,
-    ) -> Type ---
+    GetSlotType :: proc(vm : ^VM, slot : _c.int) -> Type ---
 
     @(link_name="wrenGetSlotBool")
     GetSlotBool :: proc(

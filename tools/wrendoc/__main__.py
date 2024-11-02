@@ -151,9 +151,10 @@ def makeMarkdownFile(comments, file):
 		content, cstart, cend, clineno = content
 		line, lstart, lend, llineno = line
 
-		line = line.strip()
+		line = line.strip().split("\n")[0]
 
 		# Headers
+		# TODO: Consider MARK: for sections with markdown inside the document
 
 		classKeyword = "package"
 

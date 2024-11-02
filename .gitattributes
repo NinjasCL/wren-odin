@@ -1,6 +1,6 @@
 * text=auto
 *.a binary
-*.dylib
+*.dylib binary
 *.so binary
 *.lib binary
 *.dll binary

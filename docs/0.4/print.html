@@ -194,15 +194,129 @@ var adjectives = Fiber.new {
 
 while (!adjectives.isDone) System.print(adjectives.call())
 </code></pre>
-<ul>
-<li>Since: 1.0.0</li>
-</ul>
+<h2 id="usage"><a class="header" href="#usage">Usage</a></h2>
+<p>See more complete examples at <code>example.odin</code> and <code>tests/wren_tests.odin</code></p>
+<pre><code class="language-go">package main
+
+import "core:fmt"
+
+import wren "../vendor/wren/0.4"
+
+main :: proc() {
+    config := wren.Configuration{}
+    wren.InitConfiguration(&amp;config)
+
+    vm := wren.NewVM(&amp;config)
+
+    module : cstring = "main"
+    script : cstring = `System.print("Hello Wren from Odin!")`
+    result := wren.Interpret(vm, module, script)
+
+    switch result {
+        case .WREN_RESULT_COMPILE_ERROR:
+            fmt.println("Compile error")
+        case .WREN_RESULT_RUNTIME_ERROR:
+            fmt.println("Runtime error")
+        case .WREN_RESULT_SUCCESS:
+            fmt.println("Success!")
+    }
+}
+</code></pre>
 <h2 id="api"><a class="header" href="#api">API</a></h2>
-<h3 id="foreign-wren"><a class="header" href="#foreign-wren"><a href="https://github.com/ninjascl/wren-odin/blob/main/wren.odin#L136">foreign wren</a></a></h3>
+<h3 id="reallocatefn--type-proc-c-memory-rawptr-newsize-u64-userdata-rawptr---rawptr"><a class="header" href="#reallocatefn--type-proc-c-memory-rawptr-newsize-u64-userdata-rawptr---rawptr"><a href="https://github.com/ninjascl/wren-odin/blob/main/wren.odin#L105">ReallocateFn :: #type proc "c" (memory: rawptr, newSize: u64, userData: rawptr) -&gt; rawptr</a></a></h3>
+<p>A generic allocation function that handles all explicit memory management
+used by Wren. It's used like so:</p>
+<ul>
+<li>
+<p>To allocate new memory, [memory] is NULL and [newSize] is the desired
+size. It should return the allocated memory or NULL on failure.</p>
+</li>
+<li>
+<p>To attempt to grow an existing allocation, [memory] is the memory, and
+[newSize] is the desired size. It should return [memory] if it was able to
+grow it in place, or a new pointer if it had to move it.</p>
+</li>
+<li>
+<p>To shrink memory, [memory] and [newSize] are the same as above but it will
+always return [memory].</p>
+</li>
+<li>
+<p>To free memory, [memory] will be the memory to free and [newSize] will be
+zero. It should return NULL.</p>
+</li>
+</ul>
+<h3 id="foreignmethodfn--type-proc-c-vm-vm"><a class="header" href="#foreignmethodfn--type-proc-c-vm-vm"><a href="https://github.com/ninjascl/wren-odin/blob/main/wren.odin#L110">ForeignMethodFn :: #type proc "c" (vm: ^VM)</a></a></h3>
+<p>A function callable from Wren code, but implemented in C.</p>
+<h3 id="finalizerfn--type-proc-c-data-rawptr"><a class="header" href="#finalizerfn--type-proc-c-data-rawptr"><a href="https://github.com/ninjascl/wren-odin/blob/main/wren.odin#L118">FinalizerFn :: #type proc "c" (data: rawptr)</a></a></h3>
+<p>A finalizer function for freeing resources owned by an instance of a foreign
+class. Unlike most foreign methods, finalizers do not have access to the VM
+and should not interact with it since it's in the middle of a garbage
+collection.</p>
+<h3 id="resolvemodulefn--type-proc-c-vm-vm-importer-cstring-name-cstring---cstring"><a class="header" href="#resolvemodulefn--type-proc-c-vm-vm-importer-cstring-name-cstring---cstring"><a href="https://github.com/ninjascl/wren-odin/blob/main/wren.odin#L126">ResolveModuleFn :: #type proc "c" (vm: ^VM, importer: cstring, name: cstring) -&gt; cstring</a></a></h3>
+<p>Gives the host a chance to canonicalize the imported module name,
+potentially taking into account the (previously resolved) name of the module
+that contains the import. Typically, this is used to implement relative
+imports.</p>
+<h3 id="loadmodulecompletefn--type-proc-c-vm-vm-name-cstring-result-loadmoduleresult"><a class="header" href="#loadmodulecompletefn--type-proc-c-vm-vm-name-cstring-result-loadmoduleresult"><a href="https://github.com/ninjascl/wren-odin/blob/main/wren.odin#L132">LoadModuleCompleteFn :: #type proc "c" (vm: ^VM, name: cstring, result: LoadModuleResult)</a></a></h3>
+<p>Called after loadModuleFn is called for module [name]. The original returned result
+is handed back to you in this callback, so that you can free memory if appropriate.</p>
+<h3 id="loadmodulefn--type-proc-c-vm-vm-name-cstring---loadmoduleresult"><a class="header" href="#loadmodulefn--type-proc-c-vm-vm-name-cstring---loadmoduleresult"><a href="https://github.com/ninjascl/wren-odin/blob/main/wren.odin#L137">LoadModuleFn :: #type proc "c" (vm: ^VM, name: cstring) -&gt; LoadModuleResult</a></a></h3>
+<p>Loads and returns the source code for the module [name].</p>
+<h3 id="bindforeignmethodfn--type-proc-c-vm-vm-module-cstring-classname-cstring-isstatic-bool-signature-cstring---foreignmethodfn"><a class="header" href="#bindforeignmethodfn--type-proc-c-vm-vm-module-cstring-classname-cstring-isstatic-bool-signature-cstring---foreignmethodfn"><a href="https://github.com/ninjascl/wren-odin/blob/main/wren.odin#L143">BindForeignMethodFn :: #type proc "c" (vm: ^VM, module: cstring, className: cstring, isStatic: bool, signature: cstring) -&gt; ForeignMethodFn</a></a></h3>
+<p>Returns a pointer to a foreign method on [className] in [module] with
+[signature].</p>
+<h3 id="writefn--type-proc-c-vm-vm-message-cstring"><a class="header" href="#writefn--type-proc-c-vm-vm-message-cstring"><a href="https://github.com/ninjascl/wren-odin/blob/main/wren.odin#L148">WriteFn :: #type proc "c" (vm: ^VM, message: cstring)</a></a></h3>
+<p>Displays a string of text to the user.</p>
+<h3 id="errorfn--type-proc-c-vm-vm-type-errortype-module-cstring-line-_cint-message-cstring"><a class="header" href="#errorfn--type-proc-c-vm-vm-type-errortype-module-cstring-line-_cint-message-cstring"><a href="https://github.com/ninjascl/wren-odin/blob/main/wren.odin#L166">ErrorFn :: #type proc "c" (vm: ^VM, type: ErrorType, module: cstring, line: _c.int, message: cstring)</a></a></h3>
+<p>Reports an error to the user.</p>
+<p>An error detected during compile time is reported by calling this once with
+[type] <code>WREN_ERROR_COMPILE</code>, the resolved name of the [module] and [line]
+where the error occurs, and the compiler's error [message].</p>
+<p>A runtime error is reported by calling this once with [type]
+<code>WREN_ERROR_RUNTIME</code>, no [module] or [line], and the runtime error's
+[message]. After that, a series of [type] <code>WREN_ERROR_STACK_TRACE</code> calls are
+made for each line in the stack trace. Each of those has the resolved
+[module] and [line] where the method or function is defined and [message] is
+the name of the method or function.</p>
+<h3 id="bindforeignclassfn--type-proc-c-vm-vm-module-cstring-classname-cstring---foreignclassmethods"><a class="header" href="#bindforeignclassfn--type-proc-c-vm-vm-module-cstring-classname-cstring---foreignclassmethods"><a href="https://github.com/ninjascl/wren-odin/blob/main/wren.odin#L174">BindForeignClassFn :: #type proc "c" (vm: ^VM, module: cstring, className: cstring) -&gt; ForeignClassMethods</a></a></h3>
+<p>Returns a pair of pointers to the foreign methods used to allocate and
+finalize the data for instances of [className] in resolved [module].</p>
+<h3 id="foreign-wren"><a class="header" href="#foreign-wren"><a href="https://github.com/ninjascl/wren-odin/blob/main/wren.odin#L240">foreign wren</a></a></h3>
 <p>Main container for the Wren API.</p>
 <ul>
 <li>Since: 1.0.0</li>
 </ul>
+<h3 id="initconfiguration--procconfiguration--configuration----"><a class="header" href="#initconfiguration--procconfiguration--configuration----"><a href="https://github.com/ninjascl/wren-odin/blob/main/wren.odin#L247">InitConfiguration :: proc(configuration : ^Configuration) ---</a></a></h3>
+<p>Initializes [configuration] with all of its default values.
+Call this before setting the particular fields you care about.</p>
+<h3 id="newvm--procconfiguration--configuration---vm----"><a class="header" href="#newvm--procconfiguration--configuration---vm----"><a href="https://github.com/ninjascl/wren-odin/blob/main/wren.odin#L256">NewVM :: proc(configuration : ^Configuration) -&gt; ^VM ---</a></a></h3>
+<p>Creates a new Wren virtual machine using the given [configuration]. Wren
+will copy the configuration data, so the argument passed to this can be
+freed after calling this. If [configuration] is <code>NULL</code>, uses a default
+configuration.</p>
+<h3 id="freevm--procvm--vm----"><a class="header" href="#freevm--procvm--vm----"><a href="https://github.com/ninjascl/wren-odin/blob/main/wren.odin#L263">FreeVM :: proc(vm : ^VM) ---</a></a></h3>
+<p>Disposes of all resources is use by [vm], which was previously created by a
+call to [wrenNewVM].</p>
+<h3 id="collectgarbage--procvm--vm----"><a class="header" href="#collectgarbage--procvm--vm----"><a href="https://github.com/ninjascl/wren-odin/blob/main/wren.odin#L269">CollectGarbage :: proc(vm : ^VM) ---</a></a></h3>
+<p>Immediately run the garbage collector to free unused memory.</p>
+<h3 id="interpret--procvm--vm-module--cstring-source--cstring---interpretresult----"><a class="header" href="#interpret--procvm--vm-module--cstring-source--cstring---interpretresult----"><a href="https://github.com/ninjascl/wren-odin/blob/main/wren.odin#L276">Interpret :: proc(vm : ^VM, module : cstring, source : cstring) -&gt; InterpretResult ---</a></a></h3>
+<p>Runs [source], a string of Wren source code in a new fiber in [vm] in the
+context of resolved [module].</p>
+<h3 id="makecallhandle--procvm--vm-signature--cstring---handle----"><a class="header" href="#makecallhandle--procvm--vm-signature--cstring---handle----"><a href="https://github.com/ninjascl/wren-odin/blob/main/wren.odin#L289">MakeCallHandle :: proc(vm : ^VM, signature : cstring) -&gt; ^Handle ---</a></a></h3>
+<p>Creates a handle that can be used to invoke a method with [signature] on
+using a receiver and arguments that are set up on the stack.</p>
+<p>This handle can be used repeatedly to directly invoke that method from C
+code using [wrenCall].</p>
+<p>When you are done with this handle, it must be released using
+[wrenReleaseHandle].</p>
+<h3 id="call--procvm--vm-method--handle---interpretresult----"><a class="header" href="#call--procvm--vm-method--handle---interpretresult----"><a href="https://github.com/ninjascl/wren-odin/blob/main/wren.odin#L303">Call :: proc(vm : ^VM, method : ^Handle) -&gt; InterpretResult ---</a></a></h3>
+<p>Calls [method], using the receiver and arguments previously set up on the stack.</p>
+<p>[method] must have been created by a call to [wrenMakeCallHandle]. The
+arguments to the method must be already on the stack. The receiver should be
+in slot 0 with the remaining arguments following it, in order. It is an
+error if the number of arguments provided does not match the method's
+signature.</p>
+<p>After this returns, you can access the return value from slot 0 on the stack.</p>
 
                     </main>
 
