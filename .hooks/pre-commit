@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+HOOKS=${GIT_DIR}/hooks
+PRE_COMMIT=${HOOKS}/pre-commit.d
+
+# List all pre-commit hooks
+${PRE_COMMIT}/01-check-wren-0.4
