@@ -23,10 +23,14 @@ from pathlib import Path
 CMD_DISABLE = "doc-disable"
 
 # Sets the filename for the doc
-# e.g /** doc-name: MyDoc */
-CMD_FILENAME = "doc-name:"
+# e.g /** name: MyDoc */
+CMD_FILENAME = "name:"
 
-CMD_HEADER = "doc-header"
+CMD_HEADER = "header"
+
+# Puts a markdown section in the document
+# e.g /** mark: Enums */
+CMD_MARK = "mark"
 
 def commandIsDisable(comment):
 	return comment.strip().startswith(CMD_DISABLE)
@@ -36,6 +40,9 @@ def commandIsFilename(comment):
 
 def commandIsHeader(comment):
 	return comment.strip().startswith(CMD_HEADER)
+
+def commandIsMark(comment):
+	return comment.strip().startswith(CMD_MARK)
 
 def getPath(path = None):
 	# Safely get the first arg
@@ -77,7 +84,7 @@ def getComments(content, file):
 	comments = []
 	startMatches = startCommentRegex.finditer(content)
 	endCommentChar = "*/"
-	openCurlyBraceChar = "{"
+	endOfDeclaration = "\n\n"
 	filename = None
 	header = ""
 
@@ -105,7 +112,7 @@ def getComments(content, file):
 					continue
 
 				nextlineStart = end + len(endCommentChar)
-				nextlineEnd = content.find(openCurlyBraceChar, nextlineStart)
+				nextlineEnd = content.find(endOfDeclaration, nextlineStart)
 				nextline = content[nextlineStart:nextlineEnd]
 				nextlineno = getLineNumber(nextlineStart, content)
 
@@ -135,7 +142,7 @@ def makeMarkdownFile(comments, file):
 	url = f"https://{config.repo}/{config.branch}/{info}"
 
 	markdown = f"""<!-- file: {info} -->
-<!-- documentation automatically generated using domepunk/tools/doc -->"""
+<!-- documentation automatically generated using wrendoc -->"""
 
 	apiHeaderPresent = False
 	addedHeaderContent = False
@@ -154,18 +161,20 @@ def makeMarkdownFile(comments, file):
 		line = line.strip().split("\n")[0]
 
 		# Headers
-		# TODO: Consider MARK: for sections with markdown inside the document
 
 		classKeyword = "package"
 
 		if line.startswith(f"{classKeyword} "):
 		  title = f"{classKeyword.title()}" + line[len(classKeyword):]
-		  markdown += f"\n---\n## {getHref(title, llineno, url)}\n"
+		  markdown += f"\n----\n## {getHref(title, llineno, url)}\n"
 		  apiHeaderPresent = False
 		else:
 			if not apiHeaderPresent:
 				markdown += "\n## API\n"
 				apiHeaderPresent = True
+
+		if line.endswith("{") or line.endswith(","):
+			line = line[:-1]
 
 		markdown += f"\n### {getHref(line, llineno, url)}\n"
 
