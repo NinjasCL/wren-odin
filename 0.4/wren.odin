@@ -63,7 +63,8 @@ import _c "core:c"
 
 when ODIN_OS == .Windows do foreign import "lib/windows/wren.lib"
 when ODIN_OS == .Linux   do foreign import "lib/linux/wren.a"
-when ODIN_OS == .Darwin  do foreign import "lib/macos/wren.a"
+when ODIN_OS == .Darwin && ODIN_ARCH == .amd64 do foreign import "lib/macos/wren.a"
+when ODIN_OS == .Darwin && ODIN_ARCH == .arm64 do foreign import "lib/macos-arm64/wren.a"
 
 wren_h :: 1
 
